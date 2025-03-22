@@ -5,14 +5,15 @@ use axum::http::StatusCode;
 use axum::response::IntoResponse;
 use axum::routing::{delete, get};
 use serde::{Deserialize, Serialize};
-use serde_json::{json, Value};
+use serde_json::json;
 use crate::app_state::AppState;
 use crate::models::models::{Allocation};
-use crate::utils;
+use crate::routers::utils;
+use crate::utils as base_utils;
 
 pub fn get_router(state: Arc<AppState>) -> Router {
     Router::new()
-        .route("/ping", get(utils::ping))
+        .route("/ping", get(base_utils::ping))
         .route("/", get(list).post(create_or_update))
         .route("/{scheme_name}/{symbol}", delete(remove))
         .with_state(state.clone())
@@ -72,7 +73,7 @@ async fn create_or_update(
     };
 
     let status = if created { StatusCode::CREATED } else { StatusCode::OK };
-    get_success_response(status)
+    utils::get_success_response(status)
 }
 
 async fn remove(
@@ -92,13 +93,5 @@ async fn remove(
         }
     };
 
-    Ok(get_response(StatusCode::NOT_FOUND, json!({"message": "not_found"})))
-}
-
-fn get_success_response(status: StatusCode) -> (StatusCode, Json<Value>) {
-    get_response(status, json!({ "success": true }))
-}
-
-fn get_response(status: StatusCode, value: Value) -> (StatusCode, Json<Value>) {
-    (status, Json(value))
+    Ok(utils::get_response(StatusCode::NOT_FOUND, json!({"message": "not_found"})))
 }
