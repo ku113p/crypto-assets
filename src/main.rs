@@ -1,3 +1,4 @@
+use std::error::Error;
 use std::sync::Arc;
 use std::time::Duration;
 use axum::Router;
@@ -64,10 +65,10 @@ fn spawn_storage_saver(storage: Arc<Mutex<Storage>>, storage_operator: StorageOp
     });
 }
 
-async fn run_server(state: Arc<AppState>) -> Result<(), Box<dyn std::error::Error>> {
+async fn run_server(state: Arc<AppState>) -> Result<(), Box<dyn Error>> {
     let router = Router::new()
         .route("/ping", get(utils::ping))
-        .nest("/api/v1", routers::get_router(state))
+        .nest("/api", routers::get_router(state))
         .layer(TraceLayer::new_for_http());
 
     let listener = tokio::net::TcpListener::bind("127.0.0.1:3999").await?;

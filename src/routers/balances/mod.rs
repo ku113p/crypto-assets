@@ -1,96 +1,47 @@
+mod methods;
+mod rest;
+mod htmx;
+
 use std::sync::Arc;
-use axum::extract::{Path, State};
-use axum::{Json, Router};
-use axum::http::StatusCode;
-use axum::response::IntoResponse;
-use axum::routing::{delete, get};
-use serde::{Deserialize, Serialize};
-use serde_json::json;
+use axum::Router;
+use axum::routing::{delete, get, post};
 use crate::app_state::AppState;
-use crate::models::models::Balance;
-use crate::routers::utils;
+use crate::routers::TRouter;
 use crate::utils as base_utils;
 
-pub fn get_router(state: Arc<AppState>) -> Router {
-    Router::new()
-        .route("/ping", get(base_utils::ping))
-        .route(
-            "/", get(list)
-                .post(create_or_update),
-        )
-        .route("/{symbol}", delete(remove))
-        .with_state(state.clone())
+pub enum Api {
+    REST,
+    HTMX,
 }
 
-#[derive(Serialize, Deserialize)]
-struct BalanceResponse {
-    symbol: String,
-    amount: f32,
-}
+impl Api {
+    pub fn get_router(&self, state: Arc<AppState>) -> Router {
+        let router =
+            self.with_list(self.with_create(self.with_remove(
+                Router::new().route("/ping", get(base_utils::ping))
+            )));
 
-impl BalanceResponse {
-    fn new(symbol: String, amount: f32) -> Self {
-        Self { symbol, amount }
-    }
-}
-
-async fn list(State(app_state): State<Arc<AppState>>) -> Json<Vec<BalanceResponse>> {
-    let storage = app_state.storage.lock().await;
-    let balances: Vec<BalanceResponse> = storage.balances.iter()
-        .filter_map(|b| {
-            storage.tokens
-                .get(&b.token_id)
-                .map(|token| BalanceResponse::new(token.symbol.clone(), b.amount))
-        })
-        .collect();
-    Json(balances)
-}
-
-#[derive(Serialize, Deserialize)]
-struct BalanceRequest {
-    symbol: String,
-    amount: f32,
-}
-
-async fn create_or_update(
-    State(app_state): State<Arc<AppState>>,
-    Json(request): Json<BalanceRequest>,
-) -> impl IntoResponse {
-    let mut storage = app_state.storage.lock().await;
-
-    let token_id = storage.get_or_create_token_id(&request.symbol);
-
-    let created = match storage.balances.iter_mut()
-        .find(|b| b.token_id == token_id) {
-        None => {
-            storage.balances.push(Balance::new(token_id, request.amount));
-            true
-        }
-        Some(existing) => {
-            existing.amount = request.amount;
-            false
-        }
-    };
-
-    let status = if created { StatusCode::CREATED } else { StatusCode::OK };
-
-    utils::get_success_response(status)
-}
-
-async fn remove(
-    State(app_state): State<Arc<AppState>>,
-    Path(symbol): Path<String>,
-) -> Result<impl IntoResponse, StatusCode> {
-    let mut storage = app_state.storage.lock().await;
-
-    if let Some(token_id) = storage.get_token_id(&symbol) {
-        storage.balances = storage.balances.iter()
-            .filter(|b| b.token_id != token_id)
-            .cloned()
-            .collect();
-
-        return Err(StatusCode::NO_CONTENT);
+        router.with_state(state.clone())
     }
 
-    Ok(utils::get_response(StatusCode::NOT_FOUND, json!({"message": "not_found"})))
+    fn with_list(&self, router: TRouter) -> TRouter {
+        match self {
+            Api::REST => router.route("/", get(rest::Methods::list)),
+            Api::HTMX => router.route("/", get(htmx::Methods::list)),
+        }
+    }
+
+    fn with_create(&self, router: TRouter) -> TRouter {
+        match self {
+            Api::REST => router.route("/", post(rest::Methods::create_or_update)),
+            Api::HTMX => router.route("/", post(htmx::Methods::create_or_update)),
+        }
+    }
+
+    fn with_remove(&self, router: TRouter) -> TRouter {
+        match self {
+            Api::REST => router.route("/{symbol}", delete(rest::Methods::remove)),
+            Api::HTMX => router.route("/{symbol}", delete(htmx::Methods::remove))
+        }
+    }
 }
