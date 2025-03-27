@@ -1,6 +1,7 @@
 mod balances;
 mod allocations;
 mod utils;
+pub mod index;
 
 use std::sync::Arc;
 use axum::Router;

@@ -67,6 +67,7 @@ fn spawn_storage_saver(storage: Arc<Mutex<Storage>>, storage_operator: StorageOp
 
 async fn run_server(state: Arc<AppState>) -> Result<(), Box<dyn Error>> {
     let router = Router::new()
+        .merge(routers::index::get_router())
         .route("/ping", get(utils::ping))
         .nest("/api", routers::get_router(state))
         .layer(TraceLayer::new_for_http());
