@@ -1,0 +1,28 @@
+<tr id="allocation-{scheme_name}-{symbol}">
+    <td>
+        {scheme_name}
+    </td>
+    <td>
+        {symbol}
+    </td>
+    <td>
+        <input
+                type="number"
+                name="amount"
+                value="{amount}"
+                hx-post="/api/v1-htmx/allocations"
+                hx-target="#allocation-{scheme_name}-{symbol}"
+                hx-swap="outerHTML"
+                hx-trigger="blur"
+                hx-vals='{"scheme_name":"{scheme_name}","symbol": "{symbol}"}'
+        />
+    </td>
+    <td>
+        <button
+                hx-delete="/api/v1-htmx/allocations/{scheme_name}/{symbol}"
+                hx-target="#allocation-{scheme_name}-{symbol}"
+        >
+            Delete
+        </button>
+    </td>
+</tr>
