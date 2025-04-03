@@ -31,10 +31,12 @@ impl Methods {
     ) -> Html<String> {
         let _created = BalanceStore::new(app_state).create_or_update(balance.clone()).await;
 
-        Html(format!(
-            "<tr id='balance-{}'><td>{}</td><td>{}</td><td><button hx-delete='/api/v1-htmx/balances/{}' hx-target='#balance-{}'>Delete</button></td></tr>",
-            balance.symbol, balance.symbol, balance.amount, balance.symbol, balance.symbol
-        ))
+        let row_template = utils::get_file_text("row_balance.html").await;
+        let row_html = row_template
+            .replace("{symbol}", &balance.symbol)
+            .replace("{amount}", &balance.amount.to_string());
+
+        Html(row_html)
     }
 
     pub async fn remove(

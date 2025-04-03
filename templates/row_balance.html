@@ -1,10 +1,23 @@
-<tr id='balance-{symbol}'>
-    <td>{symbol}</td>
-    <td>{amount}</td>
+<tr id="balance-{symbol}">
+    <td>
+      {symbol}
+    </td>
+    <td>
+        <input
+                type="number"
+                name="amount"
+                value="{amount}"
+                hx-post="/api/v1-htmx/balances"
+                hx-target="#balance-{symbol}"
+                hx-swap="outerHTML"
+                hx-trigger="blur"
+                hx-vals='{"symbol": "{symbol}"}'
+        />
+    </td>
     <td>
         <button
-                hx-delete='/api/v1-htmx/balances/{symbol}'
-                hx-target='#balance-{symbol}'
+                hx-delete="/api/v1-htmx/balances/{symbol}"
+                hx-target="#balance-{symbol}"
         >
             Delete
         </button>
