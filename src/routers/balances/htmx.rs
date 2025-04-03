@@ -1,24 +1,28 @@
 use std::sync::Arc;
-use axum::{extract::State, Form};
-use axum::extract::Path;
-use axum::response::Html;
+use axum::{extract::State, Form, extract::Path, response::Html};
 use serde::Deserialize;
 use crate::app_state::AppState;
 use crate::routers::balances::methods::{BalanceStore, BalanceView};
+use crate::routers::utils;
 
 pub struct Methods;
 
 impl Methods {
     pub async fn list(State(app_state): State<Arc<AppState>>) -> Html<String> {
         let balances = BalanceStore::new(app_state).list().await;
-        let html = balances.into_iter().map(|b| {
-            format!(
-                "<tr id='balance-{}'><td>{}</td><td>{}</td><td><button hx-delete='/balances/{}' hx-target='#balance-{}'>Delete</button></td></tr>",
-                b.symbol, b.symbol, b.amount, b.symbol, b.symbol
-            )
-        }).collect::<Vec<_>>().join("\n");
 
-        Html(format!("<table><tr><th>Symbol</th><th>Amount</th><th>Actions</th></tr>{}</table>", html))
+        let row_template = utils::get_file_text("row_balance.html").await;
+        let rows_html = balances.into_iter()
+            .map(|b| row_template
+                .replace("{symbol}", &b.symbol)
+                .replace("{amount}", &b.amount.to_string()))
+            .collect::<Vec<_>>()
+            .join("\n");
+
+        let list_template = utils::get_file_text("list_balances.html").await;
+        let list_html = list_template.replace("{rows}", &rows_html);
+
+        Html(list_html)
     }
 
     pub async fn create_or_update(
@@ -28,7 +32,7 @@ impl Methods {
         let _created = BalanceStore::new(app_state).create_or_update(balance.clone()).await;
 
         Html(format!(
-            "<tr id='balance-{}'><td>{}</td><td>{}</td><td><button hx-delete='/balances/{}' hx-target='#balance-{}'>Delete</button></td></tr>",
+            "<tr id='balance-{}'><td>{}</td><td>{}</td><td><button hx-delete='/api/v1-htmx/balances/{}' hx-target='#balance-{}'>Delete</button></td></tr>",
             balance.symbol, balance.symbol, balance.amount, balance.symbol, balance.symbol
         ))
     }

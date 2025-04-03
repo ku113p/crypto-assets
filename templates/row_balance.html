@@ -1,0 +1,12 @@
+<tr id='balance-{symbol}'>
+    <td>{symbol}</td>
+    <td>{amount}</td>
+    <td>
+        <button
+                hx-delete='/api/v1-htmx/balances/{symbol}'
+                hx-target='#balance-{symbol}'
+        >
+            Delete
+        </button>
+    </td>
+</tr>

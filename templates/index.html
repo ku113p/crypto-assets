@@ -3,23 +3,16 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Axum + Sakura + HTMX</title>
+    <title>DeFi Founds</title>
 
-    <!-- Sakura CSS for minimal styling -->
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/sakura.css/css/sakura.css" type="text/css">
-
-    <!-- HTMX for dynamic interactivity -->
     <script src="https://unpkg.com/htmx.org@2.0.4"></script>
 </head>
 <body>
-<h1>Welcome to Axum with Sakura & HTMX</h1>
-<p>Click the button to load content dynamically:</p>
+<h1>DeFi Founds</h1>
+<p>Manage your crypto founds in DeFi</p>
 
-<!-- HTMX Example: Load content from "/message" -->
-<button hx-get="/message" hx-target="#output" hx-swap="innerHTML">
-    Load Message
-</button>
-
-<div id="output" style="margin-top: 20px;"></div>
+<div id="balances" hx-get="/api/v1-htmx/balances" hx-trigger="load"></div>
+<div id="allocations" hx-get="/api/v1-htmx/allocations" hx-trigger="load"></div>
 </body>
 </html>
