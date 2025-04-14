@@ -7,17 +7,17 @@
                 type="number"
                 name="amount"
                 value="{amount}"
-                hx-post="/api/v1-htmx/balances"
-                hx-target="#balance-{symbol}"
-                hx-swap="outerHTML"
-                hx-trigger="blur"
-                hx-vals='{"symbol": "{symbol}"}'
+                data-hx-post="/api/v1-htmx/balances"
+                data-hx-target="#balance-{symbol}"
+                data-hx-swap="outerHTML"
+                data-hx-trigger="blur"
+                data-hx-vals='{"symbol": "{symbol}"}'
         />
     </td>
     <td>
         <button
-                hx-delete="/api/v1-htmx/balances/{symbol}"
-                hx-target="#balance-{symbol}"
+                data-hx-delete="/api/v1-htmx/balances/{symbol}"
+                data-hx-target="#balance-{symbol}"
         >
             Delete
         </button>

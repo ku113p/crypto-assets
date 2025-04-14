@@ -2,6 +2,7 @@ mod balances;
 mod allocations;
 mod utils;
 pub mod index;
+mod views;
 
 use std::sync::Arc;
 use axum::Router;
@@ -18,4 +19,6 @@ pub fn get_router(state: Arc<AppState>) -> Router {
         .nest("/v1-htmx/balances", balances::Api::HTMX.get_router(state.clone()))
         .nest("/v1/allocations", allocations::Api::REST.get_router(state.clone()))
         .nest("/v1-htmx/allocations", allocations::Api::HTMX.get_router(state.clone()))
+        .nest("/v1/views", views::Api::REST.get_router(state.clone()))
+        .nest("/v1-htmx/views", views::Api::HTMX.get_router(state.clone()))
 }

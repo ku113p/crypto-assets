@@ -48,6 +48,14 @@ impl Storage {
             |(&id, s)| if s.name == name { Some(id) } else { None }
         )
     }
+
+    pub fn get_token_symbol(&self, id: &u8) -> Option<String> {
+        self.tokens.get(id).map(|t| t.symbol.clone())
+    }
+
+    pub fn get_scheme_name(&self, id: &u16) -> Option<String> {
+        self.schemes.get(id).map(|s| s.name.clone())
+    }
 }
 
 #[derive(Clone)]

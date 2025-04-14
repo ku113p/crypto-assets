@@ -48,6 +48,12 @@ impl AllocationStore {
             false
         } else {
             storage.allocations.push(Allocation::new(token_id, scheme_id, allocation.amount));
+            let mut allocations = storage.allocations.clone();
+            allocations.sort_by_key(|a| (
+                storage.get_scheme_name(&a.scheme_id).unwrap_or_default(),
+                storage.get_token_symbol(&a.token_id).unwrap_or_default()
+            ));
+            storage.allocations = allocations;
             true
         }
     }

@@ -10,17 +10,17 @@
                 type="number"
                 name="amount"
                 value="{amount}"
-                hx-post="/api/v1-htmx/allocations"
-                hx-target="#allocation-{scheme_name}-{symbol}"
-                hx-swap="outerHTML"
-                hx-trigger="blur"
-                hx-vals='{"scheme_name":"{scheme_name}","symbol": "{symbol}"}'
+                data-hx-post="/api/v1-htmx/allocations"
+                data-hx-target="#allocation-{scheme_name}-{symbol}"
+                data-hx-swap="outerHTML"
+                data-hx-trigger="blur"
+                data-hx-vals='{"scheme_name":"{scheme_name}","symbol": "{symbol}"}'
         />
     </td>
     <td>
         <button
-                hx-delete="/api/v1-htmx/allocations/{scheme_name}/{symbol}"
-                hx-target="#allocation-{scheme_name}-{symbol}"
+                data-hx-delete="/api/v1-htmx/allocations/{scheme_name}/{symbol}"
+                data-hx-target="#allocation-{scheme_name}-{symbol}"
         >
             Delete
         </button>

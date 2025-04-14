@@ -45,6 +45,11 @@ impl BalanceStore {
             false
         } else {
             storage.balances.push(Balance::new(token_id, balance.amount));
+            let mut balances = storage.balances.clone();
+            balances.sort_by_key(
+                |b| storage.get_token_symbol(&b.token_id).unwrap_or_default()
+            );
+            storage.balances = balances;
             true
         }
     }

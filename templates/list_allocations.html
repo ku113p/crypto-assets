@@ -1,4 +1,4 @@
-<form hx-post='/api/v1-htmx/allocations' hx-target='#allocations-body' hx-swap='afterbegin'>
+<form data-hx-post='/api/v1-htmx/allocations' data-hx-target='#allocations-body' data-hx-swap='afterbegin'>
     <input type='text' name='scheme_name' placeholder='Scheme' required>
     <input type='text' name='symbol' placeholder='Asset Symbol' required>
     <input type='number' step='0.0000000001' name='amount' placeholder='Amount' required>

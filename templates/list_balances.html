@@ -1,4 +1,4 @@
-<form hx-post='/api/v1-htmx/balances' hx-target='#balances-body' hx-swap='afterbegin'>
+<form data-hx-post='/api/v1-htmx/balances' data-hx-target='#balances-body' data-hx-swap='afterbegin'>
     <input type='text' name='symbol' placeholder='Asset Symbol' required>
     <input type='number' step='0.0000000001' name='amount' placeholder='Amount' required>
     <button type='submit'>Add Balance</button>
