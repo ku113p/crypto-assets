@@ -73,6 +73,7 @@ pub fn spawn_price_worker(state: Arc<AppState>) {
     tokio::spawn(async move {
         let client = match reqwest::Client::builder()
             .timeout(Duration::from_secs(30))
+            .user_agent("crypto-assets/0.1.0")
             .build()
         {
             Ok(c) => c,
