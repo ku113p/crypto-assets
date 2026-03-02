@@ -5,7 +5,6 @@ use log::{info, error};
 use tokio::sync::Mutex;
 use tokio::time::interval;
 use crate::app_state::{AppState, PriceStatus};
-use crate::models::storage::MultiStorage;
 
 fn symbol_to_coingecko_id(symbol: &str) -> Option<&'static str> {
     match symbol.to_uppercase().as_str() {
