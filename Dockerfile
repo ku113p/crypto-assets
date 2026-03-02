@@ -1,17 +1,21 @@
-FROM rust:1.84-slim AS builder
-WORKDIR /build
+FROM rust:1.84-alpine AS build
+WORKDIR /app
+
+RUN apk add --no-cache clang lld musl-dev pkgconf openssl-dev
+ENV OPENSSL_DIR=/usr
+
 COPY Cargo.toml Cargo.lock ./
 RUN mkdir src && echo 'fn main() {}' > src/main.rs \
-    && cargo build --release \
+    && RUSTFLAGS='-C target-feature=-crt-static' cargo build --release \
     && rm -rf src target/release/deps/crypto*
 COPY src/ src/
-RUN cargo build --release
+RUN RUSTFLAGS='-C target-feature=-crt-static' cargo build --release
 
-FROM debian:bookworm-slim
-RUN apt-get update && apt-get install -y --no-install-recommends ca-certificates wget \
-    && rm -rf /var/lib/apt/lists/*
+FROM alpine:3.18
+
+RUN apk add --no-cache libgcc wget
 WORKDIR /app
-COPY --from=builder /build/target/release/crypto-assets ./server
+COPY --from=build /app/target/release/crypto-assets ./server
 COPY assets/ assets/
 COPY templates/ templates/
 EXPOSE 3999
