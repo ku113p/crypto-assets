@@ -4,7 +4,7 @@ use serde::{Deserialize, Serialize};
 pub struct Token {
     id: u8,
     pub symbol: String,
-    exchange_rate: f32,
+    pub exchange_rate: f32,
 }
 
 impl Token {

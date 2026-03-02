@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::fs::File;
 use std::io::{ErrorKind, Read, Write};
 use serde::{Deserialize, Serialize};
@@ -58,6 +58,31 @@ impl Storage {
     }
 }
 
+#[derive(Serialize, Deserialize, Debug, Default)]
+pub struct MultiStorage {
+    pub workspaces: HashMap<String, Storage>,
+}
+
+impl MultiStorage {
+    pub fn get(&self, auth_token: &str) -> Option<&Storage> {
+        self.workspaces.get(auth_token)
+    }
+
+    pub fn get_mut(&mut self, auth_token: &str) -> Option<&mut Storage> {
+        self.workspaces.get_mut(auth_token)
+    }
+
+    pub fn get_or_create(&mut self, auth_token: &str) -> &mut Storage {
+        self.workspaces.entry(auth_token.to_string()).or_default()
+    }
+
+    pub fn all_token_symbols(&self) -> HashSet<String> {
+        self.workspaces.values()
+            .flat_map(|ws| ws.tokens.values().map(|t| t.symbol.clone()))
+            .collect()
+    }
+}
+
 #[derive(Clone)]
 pub struct StorageOperator {
     filename: String,
@@ -68,11 +93,11 @@ impl StorageOperator {
         Self { filename }
     }
 
-    pub fn save(&self, storage: &Storage) -> Result<(), SaveError> {
+    pub fn save(&self, storage: &MultiStorage) -> Result<(), SaveError> {
         save(&self.filename, storage)
     }
 
-    pub fn load(&self) -> Result<Option<Storage>, LoadError> {
+    pub fn load(&self) -> Result<Option<MultiStorage>, LoadError> {
         load(&self.filename)
     }
 }
@@ -91,14 +116,17 @@ pub enum LoadError {
     Deserialize,
 }
 
-fn save(filename: &str, storage: &Storage) -> Result<(), SaveError> {
+const MULTI_STORAGE_VERSION: u8 = 0x02;
+
+fn save(filename: &str, storage: &MultiStorage) -> Result<(), SaveError> {
     let encoded: Vec<u8> = bincode::serialize(storage).map_err(|_| SaveError::Serialize)?;
     let mut file = File::create(filename).map_err(|_| SaveError::CreateFile)?;
+    file.write_all(&[MULTI_STORAGE_VERSION]).map_err(|_| SaveError::Write)?;
     file.write_all(&encoded).map_err(|_| SaveError::Write)?;
     Ok(())
 }
 
-fn load(filename: &str) -> Result<Option<Storage>, LoadError> {
+fn load(filename: &str) -> Result<Option<MultiStorage>, LoadError> {
     let mut file = match File::open(filename) {
         Ok(file) => file,
         Err(err) if err.kind() == ErrorKind::NotFound => return Ok(None),
@@ -107,6 +135,24 @@ fn load(filename: &str) -> Result<Option<Storage>, LoadError> {
 
     let mut buffer = Vec::new();
     file.read_to_end(&mut buffer).map_err(|_| LoadError::Read)?;
-    let decoded: Storage = bincode::deserialize(&buffer).map_err(|_| LoadError::Deserialize)?;
-    Ok(Some(decoded))
+
+    if buffer.is_empty() {
+        return Ok(None);
+    }
+
+    // Version byte 0x02 = MultiStorage format
+    if buffer[0] == MULTI_STORAGE_VERSION {
+        let decoded: MultiStorage = bincode::deserialize(&buffer[1..]).map_err(|_| LoadError::Deserialize)?;
+        return Ok(Some(decoded));
+    }
+
+    // Legacy migration: entire buffer is old Storage (or unversioned MultiStorage)
+    if let Ok(decoded) = bincode::deserialize::<MultiStorage>(&buffer) {
+        return Ok(Some(decoded));
+    }
+
+    let legacy: Storage = bincode::deserialize(&buffer).map_err(|_| LoadError::Deserialize)?;
+    let mut multi = MultiStorage::default();
+    multi.workspaces.insert("0".to_string(), legacy);
+    Ok(Some(multi))
 }

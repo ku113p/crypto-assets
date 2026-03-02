@@ -12,8 +12,8 @@
 <h1>DeFi Founds</h1>
 <p>Manage your crypto founds in DeFi</p>
 
-<div id="balances" data-hx-get="/api/v1-htmx/balances" data-hx-trigger="load"></div>
-<div id="allocations" data-hx-get="/api/v1-htmx/allocations" data-hx-trigger="load"></div>
-<div id="view" data-hx-get="/api/v1-htmx/views" data-hx-trigger="load"></div>
+<div id="balances" data-hx-get="/token/{auth_token}/api/v1-htmx/balances" data-hx-trigger="load"></div>
+<div id="allocations" data-hx-get="/token/{auth_token}/api/v1-htmx/allocations" data-hx-trigger="load"></div>
+<div id="view" data-hx-get="/token/{auth_token}/api/v1-htmx/views" data-hx-trigger="load"></div>
 </body>
 </html>

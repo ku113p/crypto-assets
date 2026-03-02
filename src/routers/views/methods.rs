@@ -7,6 +7,7 @@ use crate::app_state::AppState;
 
 pub struct Views {
     app_state: Arc<AppState>,
+    auth_token: String,
 }
 
 #[derive(Debug, Default, Builder, Serialize)]
@@ -46,37 +47,49 @@ impl TokenInfo {
 }
 
 impl Views {
-    pub fn new(app_state: Arc<AppState>) -> Self {
-        Self { app_state }
+    pub fn new(app_state: Arc<AppState>, auth_token: String) -> Self {
+        Self { app_state, auth_token }
     }
 
     pub async fn info(&self) -> Vec<TokenInfo> {
         let storage = self.app_state.storage.lock().await;
+        let Some(ws) = storage.get(&self.auth_token) else {
+            return vec![];
+        };
 
-        let mut builders = storage.balances.iter()
-            .map(|b| (b.token_id, TokenInfo::builder_with_default()
-                .amount(b.amount)
-                .symbol(storage.tokens
-                    .get(&b.token_id)
-                    .map(|t| t.symbol.to_owned())
-                    .unwrap_or_default()
-                ).to_owned()
-            ))
-            .collect::<HashMap<_, _>>();
+        let mut builders: HashMap<u8, TokenInfoBuilder> = HashMap::new();
 
-        for a in storage.allocations.iter() {
+        for b in ws.balances.iter() {
+            let symbol = ws.tokens
+                .get(&b.token_id)
+                .map(|t| t.symbol.to_owned())
+                .unwrap_or_default();
+            let usdt_rate = ws.tokens
+                .get(&b.token_id)
+                .map(|t| t.exchange_rate)
+                .unwrap_or(0.0);
+
+            let mut builder = TokenInfo::builder_with_default();
+            builder.amount(b.amount).symbol(symbol).usdt_rate(usdt_rate);
+            builders.insert(b.token_id, builder);
+        }
+
+        for a in ws.allocations.iter() {
             if let Some(b) = builders.get_mut(&a.token_id) {
                 b.defi_amount(a.amount + b.defi_amount.unwrap_or_default());
             }
         }
 
-        for b in builders.values_mut() {
-            let usdt_rate = 1.0;
+        for (token_id, b) in builders.iter_mut() {
+            let usdt_rate = ws.tokens
+                .get(token_id)
+                .map(|t| t.exchange_rate)
+                .unwrap_or(0.0);
             let amount = b.amount.unwrap_or_default();
             let usdt_amount = usdt_rate * amount;
             let defi_amount = b.defi_amount.unwrap_or_default();
             let usdt_defi_amount = usdt_rate * defi_amount;
-            let defi_self_percentage = defi_amount / amount;
+            let defi_self_percentage = if amount > 0.0 { defi_amount / amount } else { 0.0 };
 
             b.usdt_rate(usdt_rate);
             b.usdt_amount(usdt_amount);

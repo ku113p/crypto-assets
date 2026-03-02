@@ -7,7 +7,7 @@
                 type="number"
                 name="amount"
                 value="{amount}"
-                data-hx-post="/api/v1-htmx/balances"
+                data-hx-post="/token/{auth_token}/api/v1-htmx/balances"
                 data-hx-target="#balance-{symbol}"
                 data-hx-swap="outerHTML"
                 data-hx-trigger="blur"
@@ -16,7 +16,7 @@
     </td>
     <td>
         <button
-                data-hx-delete="/api/v1-htmx/balances/{symbol}"
+                data-hx-delete="/token/{auth_token}/api/v1-htmx/balances/{symbol}"
                 data-hx-target="#balance-{symbol}"
         >
             Delete

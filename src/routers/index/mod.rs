@@ -1,10 +1,15 @@
-use axum::Router;
-use tower_http::services::ServeDir;
+use axum::Extension;
+use axum::response::Html;
+use crate::auth::AuthToken;
+use crate::routers::utils;
 
-pub fn get_router() -> Router {
-    let serve_dir = ServeDir::new("assets");
+pub async fn dashboard(Extension(auth_token): Extension<AuthToken>) -> Html<String> {
+    let token = auth_token.0;
+    let template = utils::get_file_text("dashboard.html").await;
+    Html(template.replace("{auth_token}", &token))
+}
 
-    Router::new()
-        .nest_service("/assets", serve_dir.clone())
-        .fallback_service(serve_dir)
+pub async fn landing_page() -> Html<String> {
+    let template = utils::get_file_text("landing.html").await;
+    Html(template)
 }

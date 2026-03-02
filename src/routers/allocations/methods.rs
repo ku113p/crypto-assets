@@ -18,19 +18,23 @@ impl AllocationView {
 
 pub struct AllocationStore {
     app_state: Arc<AppState>,
+    auth_token: String,
 }
 
 impl AllocationStore {
-    pub fn new(app_state: Arc<AppState>) -> Self {
-        Self { app_state }
+    pub fn new(app_state: Arc<AppState>, auth_token: String) -> Self {
+        Self { app_state, auth_token }
     }
 
     pub async fn list(&self) -> Vec<AllocationView> {
         let storage = self.app_state.storage.lock().await;
-        storage.allocations.iter()
+        let Some(ws) = storage.get(&self.auth_token) else {
+            return vec![];
+        };
+        ws.allocations.iter()
             .filter_map(|a| {
-                let token = storage.tokens.get(&a.token_id)?;
-                let scheme = storage.schemes.get(&a.scheme_id)?;
+                let token = ws.tokens.get(&a.token_id)?;
+                let scheme = ws.schemes.get(&a.scheme_id)?;
                 Some(AllocationView::new(scheme.name.clone(), token.symbol.clone(), a.amount))
             })
             .collect()
@@ -38,32 +42,36 @@ impl AllocationStore {
 
     pub async fn create_or_update(&self, allocation: AllocationView) -> bool {
         let mut storage = self.app_state.storage.lock().await;
+        let ws = storage.get_or_create(&self.auth_token);
 
-        let token_id = storage.get_or_create_token_id(&allocation.symbol);
-        let scheme_id = storage.get_or_create_scheme_id(&allocation.scheme_name);
+        let token_id = ws.get_or_create_token_id(&allocation.symbol);
+        let scheme_id = ws.get_or_create_scheme_id(&allocation.scheme_name);
 
-        if let Some(existing) = storage.allocations.iter_mut()
+        if let Some(existing) = ws.allocations.iter_mut()
             .find(|a| a.token_id == token_id && a.scheme_id == scheme_id) {
             existing.amount = allocation.amount;
             false
         } else {
-            storage.allocations.push(Allocation::new(token_id, scheme_id, allocation.amount));
-            let mut allocations = storage.allocations.clone();
+            ws.allocations.push(Allocation::new(token_id, scheme_id, allocation.amount));
+            let mut allocations = ws.allocations.clone();
             allocations.sort_by_key(|a| (
-                storage.get_scheme_name(&a.scheme_id).unwrap_or_default(),
-                storage.get_token_symbol(&a.token_id).unwrap_or_default()
+                ws.get_scheme_name(&a.scheme_id).unwrap_or_default(),
+                ws.get_token_symbol(&a.token_id).unwrap_or_default()
             ));
-            storage.allocations = allocations;
+            ws.allocations = allocations;
             true
         }
     }
 
     pub async fn remove(&self, scheme_name: String, symbol: String) -> bool {
         let mut storage = self.app_state.storage.lock().await;
+        let Some(ws) = storage.get_mut(&self.auth_token) else {
+            return false;
+        };
 
-        if let Some(scheme_id) = storage.get_scheme_id(&scheme_name) {
-            if let Some(token_id) = storage.get_token_id(&symbol) {
-                storage.allocations.retain(|a| !(a.token_id == token_id && a.scheme_id == scheme_id));
+        if let Some(scheme_id) = ws.get_scheme_id(&scheme_name) {
+            if let Some(token_id) = ws.get_token_id(&symbol) {
+                ws.allocations.retain(|a| !(a.token_id == token_id && a.scheme_id == scheme_id));
                 return true;
             }
         }

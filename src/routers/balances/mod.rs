@@ -7,7 +7,6 @@ use axum::Router;
 use axum::routing::{delete, get, post};
 use crate::app_state::AppState;
 use crate::routers::TRouter;
-use crate::utils as base_utils;
 
 pub enum Api {
     REST,
@@ -18,7 +17,7 @@ impl Api {
     pub fn get_router(&self, state: Arc<AppState>) -> Router {
         let router =
             self.with_list(self.with_create(self.with_remove(
-                Router::new().route("/ping", get(base_utils::ping))
+                Router::new()
             )));
 
         router.with_state(state.clone())
