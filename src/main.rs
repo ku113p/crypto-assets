@@ -19,7 +19,8 @@ mod utils;
 async fn main() {
     env_logger::init();
 
-    let storage_operator = StorageOperator::new("./storage.bin".to_string());
+    let storage_path = std::env::var("STORAGE_PATH").unwrap_or_else(|_| "./storage.bin".to_string());
+    let storage_operator = StorageOperator::new(storage_path);
     let storage = Arc::new(Mutex::new(match load_storage(&storage_operator) {
         Ok(storage) => storage,
         Err(err) => {
@@ -72,7 +73,7 @@ async fn run_server(state: Arc<AppState>) -> Result<(), Box<dyn Error>> {
         .nest("/api", routers::get_router(state))
         .layer(TraceLayer::new_for_http());
 
-    let listener = tokio::net::TcpListener::bind("127.0.0.1:3999").await?;
+    let listener = tokio::net::TcpListener::bind("0.0.0.0:3999").await?;
     axum::serve(listener, router.into_make_service()).await?;
 
     Ok(())
