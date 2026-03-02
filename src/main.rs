@@ -89,7 +89,7 @@ async fn run_server(state: Arc<AppState>) -> Result<(), Box<dyn Error>> {
     let router = Router::new()
         .route("/", get(routers::index::landing_page))
         .route("/ping", get(utils::ping))
-        .nest("/token/:auth_token", token_routes)
+        .nest("/token/{auth_token}", token_routes)
         .nest_service("/assets", ServeDir::new("assets"))
         .layer(TraceLayer::new_for_http());
 
