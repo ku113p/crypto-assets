@@ -80,13 +80,17 @@ fn spawn_storage_saver(storage: Arc<Mutex<MultiStorage>>, storage_operator: Stor
 }
 
 async fn run_server(state: Arc<AppState>) -> Result<(), Box<dyn Error>> {
+    let token_routes = Router::new()
+        .route("/", get(routers::index::dashboard))
+        .route("/dashboard", get(routers::index::dashboard))
+        .nest("/api", routers::get_router(state.clone()))
+        .layer(from_fn_with_state(state.clone(), auth::token_middleware));
+
     let router = Router::new()
         .route("/", get(routers::index::landing_page))
         .route("/ping", get(utils::ping))
-        .route("/dashboard", get(routers::index::dashboard))
+        .nest("/token/:auth_token", token_routes)
         .nest_service("/assets", ServeDir::new("assets"))
-        .nest("/api", routers::get_router(state.clone()))
-        .layer(from_fn_with_state(state.clone(), auth::token_middleware))
         .layer(TraceLayer::new_for_http());
 
     let listener = tokio::net::TcpListener::bind("0.0.0.0:3999").await?;
