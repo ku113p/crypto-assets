@@ -4,6 +4,7 @@ use std::time::Duration;
 use log::{info, error};
 use tokio::sync::Mutex;
 use tokio::time::interval;
+use crate::app_state::{AppState, PriceStatus};
 use crate::models::storage::MultiStorage;
 
 fn symbol_to_coingecko_id(symbol: &str) -> Option<&'static str> {
@@ -51,12 +52,37 @@ fn symbol_to_coingecko_id(symbol: &str) -> Option<&'static str> {
     }
 }
 
-pub fn spawn_price_worker(storage: Arc<Mutex<MultiStorage>>) {
+fn now_iso() -> String {
+    let secs = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .unwrap_or_default()
+        .as_secs();
+    format!("{secs}")
+}
+
+async fn update_status(price_status: &Mutex<PriceStatus>, result: &str, updated: u32) {
+    let mut status = price_status.lock().await;
+    status.last_result = Some(result.to_string());
+    status.last_updated = Some(now_iso());
+    status.tokens_updated = updated;
+}
+
+pub fn spawn_price_worker(state: Arc<AppState>) {
+    let storage = state.storage.clone();
+    let price_status = state.price_status.clone();
+
     tokio::spawn(async move {
-        let client = reqwest::Client::builder()
+        let client = match reqwest::Client::builder()
             .timeout(Duration::from_secs(30))
             .build()
-            .unwrap_or_default();
+        {
+            Ok(c) => c,
+            Err(err) => {
+                error!("Price worker: failed to build HTTP client: {err}");
+                update_status(&price_status, &format!("client build failed: {err}"), 0).await;
+                return;
+            }
+        };
 
         let mut interval = interval(Duration::from_secs(3600));
 
@@ -70,6 +96,7 @@ pub fn spawn_price_worker(storage: Arc<Mutex<MultiStorage>>) {
 
             if symbols.is_empty() {
                 info!("Price worker: no tokens to update");
+                update_status(&price_status, "no tokens", 0).await;
                 continue;
             }
 
@@ -84,7 +111,8 @@ pub fn spawn_price_worker(storage: Arc<Mutex<MultiStorage>>) {
             }
 
             if cg_ids.is_empty() {
-                info!("Price worker: no mappable tokens found");
+                info!("Price worker: no mappable tokens found (symbols: {:?})", symbols);
+                update_status(&price_status, &format!("no mappable tokens: {:?}", symbols), 0).await;
                 continue;
             }
 
@@ -94,12 +122,15 @@ pub fn spawn_price_worker(storage: Arc<Mutex<MultiStorage>>) {
                 ids_param
             );
 
-            info!("Price worker: fetching prices for {} tokens", cg_ids.len());
+            info!("Price worker: fetching prices for {} tokens (ids: {})", cg_ids.len(), ids_param);
 
             match client.get(&url).send().await {
                 Ok(resp) => {
-                    if !resp.status().is_success() {
-                        error!("Price worker: CoinGecko returned status {}", resp.status());
+                    let status_code = resp.status();
+                    if !status_code.is_success() {
+                        let body = resp.text().await.unwrap_or_default();
+                        error!("Price worker: CoinGecko returned status {} body: {}", status_code, body);
+                        update_status(&price_status, &format!("HTTP {}: {}", status_code, body), 0).await;
                         continue;
                     }
 
@@ -124,11 +155,18 @@ pub fn spawn_price_worker(storage: Arc<Mutex<MultiStorage>>) {
                             }
 
                             info!("Price worker: updated {} token exchange rates", updated);
+                            update_status(&price_status, "ok", updated as u32).await;
                         }
-                        Err(err) => error!("Price worker: failed to parse response: {err}"),
+                        Err(err) => {
+                            error!("Price worker: failed to parse response: {err}");
+                            update_status(&price_status, &format!("parse error: {err}"), 0).await;
+                        }
                     }
                 }
-                Err(err) => error!("Price worker: request failed: {err}"),
+                Err(err) => {
+                    error!("Price worker: request failed: {err}");
+                    update_status(&price_status, &format!("request failed: {err}"), 0).await;
+                }
             }
         }
     });

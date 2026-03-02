@@ -43,7 +43,7 @@ async fn main() {
     let state = Arc::new(AppState::new(storage.clone(), rate_limiter));
 
     spawn_storage_saver(storage.clone(), storage_operator.clone());
-    price_worker::spawn_price_worker(storage.clone());
+    price_worker::spawn_price_worker(state.clone());
 
     if let Err(err) = run_server(state).await {
         error!("Server error: {err:?}");
@@ -89,9 +89,11 @@ async fn run_server(state: Arc<AppState>) -> Result<(), Box<dyn Error>> {
     let router = Router::new()
         .route("/", get(routers::index::landing_page))
         .route("/ping", get(utils::ping))
+        .route("/status", get(utils::status))
         .nest("/token/{auth_token}", token_routes)
         .nest_service("/assets", ServeDir::new("assets"))
-        .layer(TraceLayer::new_for_http());
+        .layer(TraceLayer::new_for_http())
+        .with_state(state);
 
     let listener = tokio::net::TcpListener::bind("0.0.0.0:3999").await?;
     axum::serve(listener, router.into_make_service()).await?;
