@@ -86,14 +86,17 @@ async fn run_server(state: Arc<AppState>) -> Result<(), Box<dyn Error>> {
         .nest("/api", routers::get_router(state.clone()))
         .layer(from_fn_with_state(state.clone(), auth::token_middleware));
 
+    let status_route = Router::new()
+        .route("/status", get(utils::status))
+        .with_state(state.clone());
+
     let router = Router::new()
         .route("/", get(routers::index::landing_page))
         .route("/ping", get(utils::ping))
-        .route("/status", get(utils::status))
+        .merge(status_route)
         .nest("/token/{auth_token}", token_routes)
         .nest_service("/assets", ServeDir::new("assets"))
-        .layer(TraceLayer::new_for_http())
-        .with_state(state);
+        .layer(TraceLayer::new_for_http());
 
     let listener = tokio::net::TcpListener::bind("0.0.0.0:3999").await?;
     axum::serve(listener, router.into_make_service()).await?;
